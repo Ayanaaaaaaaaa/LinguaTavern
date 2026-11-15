@@ -3,7 +3,11 @@ import {
     eventSource, event_types, saveSettingsDebounced, generateRaw, getRequestHeaders,
     setExtensionPrompt, extension_prompt_types, extension_prompt_roles,
 } from '../../../../../script.js';
-import { extension_settings, getContext } from '../../../../extensions.js';
+
+// The extension can live either in public/scripts/extensions/third-party or in
+// data/<user>/extensions. Resolve the host module from both layouts.
+const extensionApi = await import('../../../../extensions.js').catch(() => import('../../../../../public/scripts/extensions.js'));
+const { extension_settings, getContext } = extensionApi;
 
 export const MODULE = 'lingua_tavern';
 export const baseUrl = new URL('../data/', import.meta.url).href;
