@@ -229,7 +229,7 @@
 .lt-micbtn.on { color: var(--lt-bad); opacity: 1; animation: lt-pulse 1.2s infinite; }
 .lt-quickbtn { cursor: pointer; opacity: .75; align-self: center; color: var(--lt-acc); padding: 4px; }
 .lt-quickbtn:hover { opacity: 1; }
-.lt-quick-fab { position: fixed !important; top: 50%; right: 8px; bottom: auto; transform: translateY(-50%); z-index: 2147483000 !important; display: flex !important; align-items: center; justify-content: center; width: 48px; height: 48px; padding: 0; border: 1px solid var(--lt-bd); border-radius: 50%; background: var(--lt-surface); color: var(--lt-acc); box-shadow: 0 4px 16px rgba(0, 0, 0, .5); font-size: 23px; line-height: 1; }
+.lt-quick-fab { position: fixed !important; top: 68%; right: 8px; bottom: auto; transform: translateY(-50%); z-index: 2147483000 !important; display: flex !important; align-items: center; justify-content: center; width: 48px; height: 48px; padding: 0; border: 1px solid var(--lt-bd); border-radius: 50%; background: var(--lt-surface); color: var(--lt-acc); box-shadow: 0 4px 16px rgba(0, 0, 0, .5); font-size: 23px; line-height: 1; }
 .lt-quick-fab span { display: none; }
 
 @media (max-width: 600px) {
