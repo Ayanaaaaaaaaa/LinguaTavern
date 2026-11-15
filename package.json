@@ -1,0 +1,12 @@
+{
+  "name": "lingua-tavern",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/core.test.mjs && node tests/integration.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  }
+}
