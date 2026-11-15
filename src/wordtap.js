@@ -295,7 +295,7 @@ function renderPopup() {
         </div>
         ${tr}${gloss}${defs}${ctx}
         <div class="lt-pop-actions">
-            <button class="lt-pbtn ${saved ? 'on' : ''}" data-a="save"><i class="fa-solid fa-star"></i> ${saved ? 'В словаре' : 'В словарь'}</button>
+            <button class="lt-pbtn ${saved ? 'on' : ''}" data-a="save"><i class="fa-solid fa-star"></i> ${saved ? 'В словаре' : (c.trErr ? 'Перевести и добавить' : 'Добавить в словарь')}</button>
             ${c.phrase ? '' : `<button class="lt-pbtn ${known ? 'on' : ''}" data-a="known"><i class="fa-solid fa-check"></i> ${known ? 'Знаю ✓' : 'Знаю'}</button>
             <button class="lt-pbtn" data-a="ctx"><i class="fa-solid fa-lightbulb"></i> В контексте</button>
             <button class="lt-pbtn" data-a="sent"><i class="fa-solid fa-language"></i> Предложение</button>`}
@@ -382,14 +382,27 @@ async function onPopupClick(e) {
         return void speech.speak(c.surface, { lang, rate: 0.85 });
     }
     if (a === 'save') {
-        if (S.getWord(lang, c.info.key)) S.removeWord(lang, c.info.key);
-        else {
-            S.saveWord({
-                lang, w: c.info.key, f: c.surface, tr: c.tr || '', ctx: c.sentence || '', lvl: c.info.level || 0, approx: c.info.approx || undefined,
-                ipa: lang === 'en' ? c.dict?.ipa : undefined, pinyin: lang === 'zh' ? c.info.pinyin : undefined,
-                def: c.dict?.meanings?.[0]?.def || c.info.gloss || '', pos: c.dict?.meanings?.[0]?.pos || '', phrase: c.phrase || undefined,
-            });
+        if (c.tr == null || c.trErr) {
+            c.extra = spinner('Перевожу перед добавлением…');
+            renderPopup();
+            const mine = reqId;
+            await lookup(c, mine);
+            if (mine !== reqId || !cur) return;
+            if (!c.tr && !c.info.gloss && !c.dict?.meanings?.length && !S.getWord(lang, c.info.key)) {
+                st.toast('error', 'Не удалось получить перевод. Попробуйте ещё раз.');
+                return renderPopup();
+            }
         }
+        const old = S.getWord(lang, c.info.key);
+        S.saveWord({
+            lang, w: c.info.key, f: c.surface, tr: c.tr || old?.tr || '', ctx: c.sentence || old?.ctx || '',
+            ctxAt: c.sentence ? Date.now() : old?.ctxAt, lvl: c.info.level || old?.lvl || 0,
+            approx: c.info.approx || old?.approx || undefined,
+            ipa: lang === 'en' ? (c.dict?.ipa || old?.ipa) : undefined,
+            pinyin: lang === 'zh' ? c.info.pinyin : undefined,
+            def: c.dict?.meanings?.[0]?.def || c.info.gloss || old?.def || '',
+            pos: c.dict?.meanings?.[0]?.pos || old?.pos || '', phrase: c.phrase || old?.phrase || undefined,
+        });
         restyleKey(c.info.key);
         return renderPopup();
     }
