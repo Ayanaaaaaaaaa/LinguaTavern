@@ -39,15 +39,16 @@ export function setVisible(on) {
 
 export function init() {
     const host = document.getElementById('leftSendForm') || document.getElementById('send_form');
-    if (btn || quick) return;
-    if (host) {
+    if (!btn && host) {
         btn = el('<div id="lt_mic" class="lt-micbtn fa-solid fa-microphone interactable" title="Продиктовать сообщение (Lingua Tavern)" role="button" tabindex="0"></div>');
         btn.addEventListener('click', toggle);
         btn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
         host.append(btn);
     }
-    quick = el('<button id="lt_quick_open" class="lt-quickbtn lt-quick-fab fa-solid fa-graduation-cap interactable" title="Открыть Lingua Tavern" aria-label="Открыть Lingua Tavern" type="button"></button>');
-    quick.addEventListener('click', () => document.dispatchEvent(new CustomEvent('lt:open-hub', { detail: { tab: 'learn' } })));
-    document.body.append(quick);
+    if (!quick) {
+        quick = document.getElementById('lt_quick_open') || el('<button id="lt_quick_open" class="lt-quickbtn lt-quick-fab fa-solid fa-graduation-cap interactable" title="Открыть Lingua Tavern" aria-label="Открыть Lingua Tavern" type="button"></button>');
+        quick.addEventListener('click', () => document.dispatchEvent(new CustomEvent('lt:open-hub', { detail: { tab: 'learn' } })));
+    }
+    if (quick.parentElement !== document.body) document.body.append(quick);
     setVisible(S.get().enabled);
 }
