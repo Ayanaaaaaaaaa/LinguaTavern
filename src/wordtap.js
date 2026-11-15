@@ -8,7 +8,7 @@ import { $, $$, esc, el, spinner, levelChip, emit, debounce, topShow, topHide } 
 import { segmentZh, hasCJK, hashStr, normWord, sentenceAt, RE_EN_WORD, splitSentences } from './text.js';
 import { wordInfo, analyzeText, levelLabel, splitZhWord, isLoaded, loadData } from './levels.js';
 
-const MAX_AUTO = 30;                 // messages wrapped immediately; older ones lazily when scrolled into view
+const DEFAULT_MAX_AUTO = 30;         // messages wrapped immediately; older ones lazily when scrolled into view
 const SKIP = 'code, pre, script, style, a, button, textarea, input, ruby, .lt-w, .lt-bar, .lt-out, .lt-coach, .mes_reasoning, .mes_reasoning_details, .mes_img_container, .mes_media_container, .custom-code-block';
 
 let chatEl = null;
@@ -153,12 +153,14 @@ function unwrapEl(root) {
 }
 
 function ensureWrapped(textEl) {
-    if (textEl.querySelector('.lt-w')) return;
-    const txt = textEl.textContent;
+    const txt = visibleText(textEl);
     if (!txt.trim() || txt.trim() === '...') return;
     const h = hashStr(txt);
+    if (textEl.querySelector('.lt-w') && textEl.dataset.ltHash === h) return;
+    if (textEl.querySelector('.lt-w')) unwrapEl(textEl);
     if (textEl.dataset.ltEmpty === h) return;
     wrapEl(textEl);
+    textEl.dataset.ltHash = h;
     if (!textEl.querySelector('.lt-w')) textEl.dataset.ltEmpty = h;
 }
 
@@ -463,9 +465,10 @@ export function scan() {
     if (!chatEl || !S.get().enabled) return;
     const all = $$('.mes', chatEl);
     guard(() => {
-        for (const m of all.slice(-MAX_AUTO)) handleMes(m);
-        if (all.length > MAX_AUTO) {
-            for (const m of all.slice(0, -MAX_AUTO)) {
+        const maxAuto = Math.max(5, Number(S.get().scanLimit) || DEFAULT_MAX_AUTO);
+        for (const m of all.slice(-maxAuto)) handleMes(m);
+        if (all.length > maxAuto) {
+            for (const m of all.slice(0, -maxAuto)) {
                 if (!observed.has(m)) { observed.add(m); io?.observe(m); }
             }
         }
@@ -475,6 +478,10 @@ export function scan() {
 }
 
 const schedule = debounce(() => scan(), 120);
+function retryRecentScan() {
+    schedule();
+    for (const delay of [0, 180, 500, 1000]) setTimeout(scan, delay);
+}
 
 /** Closes popup and removes per-message outputs (translation, simplification…). Called on swipe/regenerate/edit. */
 export function reset(mesId = null) {
@@ -496,7 +503,7 @@ export async function refresh() {
     closePopup();
     await loadData(S.get().lang, st.baseUrl).catch((e) => st.toast('error', 'Не удалось загрузить данные уровней: ' + e.message));
     guard(() => {
-        for (const t of $$('.mes_text', chatEl)) { unwrapEl(t); delete t.dataset.ltEmpty; }
+        for (const t of $$('.mes_text', chatEl)) { unwrapEl(t); delete t.dataset.ltEmpty; delete t.dataset.ltHash; }
         for (const b of $$('.lt-bar', chatEl)) b.remove();
     });
     scan();
@@ -571,15 +578,15 @@ export async function init() {
     const mark = () => { generating = true; genSince = Date.now(); closePopup(); };
     const done = () => { generating = false; schedule(); };
     st.on('GENERATION_STARTED', mark);
-    st.on('GENERATION_ENDED', done);
-    st.on('GENERATION_STOPPED', done);
+    st.on('GENERATION_ENDED', () => { done(); retryRecentScan(); });
+    st.on('GENERATION_STOPPED', () => { done(); retryRecentScan(); });
     st.on('MESSAGE_SWIPED', (id) => { reset(id); schedule(); });
     st.on('MESSAGE_EDITED', (id) => { reset(id); schedule(); });
     st.on('MESSAGE_UPDATED', (id) => { reset(id); schedule(); });
     st.on('MESSAGE_DELETED', () => { reset(); schedule(); });
     st.on('CHAT_CHANGED', () => { generating = false; reset(); setTimeout(scan, 400); });
     st.on('USER_MESSAGE_RENDERED', () => schedule());
-    st.on('CHARACTER_MESSAGE_RENDERED', (id) => { generating = false; schedule(); setTimeout(() => autoSpeak(id), 250); });
+    st.on('CHARACTER_MESSAGE_RENDERED', (id) => { generating = false; retryRecentScan(); setTimeout(() => autoSpeak(id), 250); });
 
     await loadData(S.get().lang, st.baseUrl).catch((e) => st.toast('error', 'Не удалось загрузить данные уровней: ' + e.message));
     observer.observe(chatEl, { childList: true, subtree: true });
