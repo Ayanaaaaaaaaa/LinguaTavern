@@ -41,7 +41,7 @@ export function handleResultAction(b, lang) {
     const t = b.dataset.t || '';
     if (a === 'r-say') { speech.speak(t, { lang }); return true; }
     if (a === 'r-shadow') { emit('lt:open-hub', { tab: 'speak', mode: 'shadow', items: [t] }); return true; }
-    if (a === 'r-chat') { st.setInput(t); st.toast('success', 'Текст вставлен в поле ввода.'); return true; }
+    if (a === 'r-chat') { st.appendInput(t); st.toast('success', 'Текст добавлен в поле ввода.'); return true; }
     if (a === 'r-save') {
         const ph = S.get().phrases;
         if (!ph.some((p) => p.t === t && p.lang === lang)) ph.push({ t, tr: '', lang, added: Date.now() });

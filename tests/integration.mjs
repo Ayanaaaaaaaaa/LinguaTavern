@@ -307,6 +307,9 @@ ok($('.lt-err .lt-cat')?.textContent === 'Времена глаголов', 'wri
 ok(extension_settings.lingua_tavern.stats.mistakes.tense === 1, 'write: mistake category logged');
 click($('[data-a="r-chat"]'));
 ok($('#send_textarea').value === 'I went to school yesterday.', 'write: corrected text goes to the chat input', $('#send_textarea').value);
+$('#send_textarea').value = 'My original sentence.';
+click($('[data-a="r-chat"]'));
+ok($('#send_textarea').value === 'My original sentence.\nI went to school yesterday.', 'write: chat insertion preserves existing text', $('#send_textarea').value);
 click($('[data-a="mode"][data-m="say"]'));
 $('[data-r="ta"]').value = 'хочу перенести встречу';
 click($('[data-a="say-go"]'));

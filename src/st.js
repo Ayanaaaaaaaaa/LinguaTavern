@@ -49,6 +49,16 @@ export function setInput(text) {
     t.focus();
 }
 
+export function appendInput(text) {
+    const t = textarea();
+    if (!t) return;
+    const current = t.value.trimEnd();
+    const addition = String(text ?? '').trim();
+    t.value = current && addition ? `${current}\n${addition}` : (current || addition);
+    t.dispatchEvent(new Event('input', { bubbles: true }));
+    t.focus();
+}
+
 export function send() {
     document.getElementById('send_but')?.click();
 }
