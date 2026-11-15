@@ -5,6 +5,7 @@ import * as speech from './speech.js';
 import { el } from './ui.js';
 
 let btn = null;
+let quick = null;
 let rec = null;
 
 async function toggle() {
@@ -33,14 +34,18 @@ async function toggle() {
 
 export function setVisible(on) {
     if (btn) btn.style.display = on ? '' : 'none';
+    if (quick) quick.style.display = on ? '' : 'none';
 }
 
 export function init() {
     const host = document.getElementById('leftSendForm') || document.getElementById('send_form');
     if (!host || btn) return;
     btn = el('<div id="lt_mic" class="lt-micbtn fa-solid fa-microphone interactable" title="Продиктовать сообщение (Lingua Tavern)" role="button" tabindex="0"></div>');
+    quick = el('<div id="lt_quick_open" class="lt-quickbtn fa-solid fa-graduation-cap interactable" title="Открыть Lingua Tavern" role="button" tabindex="0"></div>');
     btn.addEventListener('click', toggle);
     btn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
-    host.appendChild(btn);
+    quick.addEventListener('click', () => document.dispatchEvent(new CustomEvent('lt:open-hub', { detail: { tab: 'learn' } })));
+    quick.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); quick.click(); } });
+    host.append(quick, btn);
     setVisible(S.get().enabled);
 }
