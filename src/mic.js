@@ -9,6 +9,75 @@ let btn = null;
 let quick = null;
 let rec = null;
 let quickObserver = null;
+let quickMoved = false;
+
+function restoreQuickPosition() {
+    if (!quick) return;
+    const saved = S.get().quickPosition;
+    if (!saved || !Number.isFinite(saved.left) || !Number.isFinite(saved.top)) return;
+    quick.style.left = `${saved.left}px`;
+    quick.style.top = `${saved.top}px`;
+    quick.style.right = 'auto';
+    quick.style.transform = 'none';
+}
+
+function enableQuickDrag() {
+    if (!quick || quick.dataset.dragReady) return;
+    quick.dataset.dragReady = '1';
+    let active = false;
+    let startX = 0;
+    let startY = 0;
+    let startLeft = 0;
+    let startTop = 0;
+
+    quick.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        const r = quick.getBoundingClientRect();
+        active = true;
+        quickMoved = false;
+        startX = e.clientX;
+        startY = e.clientY;
+        startLeft = r.left;
+        startTop = r.top;
+        quick.style.left = `${r.left}px`;
+        quick.style.top = `${r.top}px`;
+        quick.style.right = 'auto';
+        quick.style.transform = 'none';
+        quick.setPointerCapture?.(e.pointerId);
+        e.preventDefault();
+    });
+    quick.addEventListener('pointermove', (e) => {
+        if (!active) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        if (Math.abs(dx) + Math.abs(dy) > 6) quickMoved = true;
+        const maxLeft = Math.max(0, window.innerWidth - quick.offsetWidth);
+        const maxTop = Math.max(0, window.innerHeight - quick.offsetHeight);
+        quick.style.left = `${Math.min(maxLeft, Math.max(0, startLeft + dx))}px`;
+        quick.style.top = `${Math.min(maxTop, Math.max(0, startTop + dy))}px`;
+    });
+    const finish = (e) => {
+        if (!active) return;
+        active = false;
+        quick.releasePointerCapture?.(e.pointerId);
+        if (quickMoved) {
+            const r = quick.getBoundingClientRect();
+            S.get().quickPosition = {
+                left: Math.round(r.left), top: Math.round(r.top),
+            };
+            S.save();
+        }
+    };
+    quick.addEventListener('pointerup', finish);
+    quick.addEventListener('pointercancel', finish);
+    quick.addEventListener('click', (e) => {
+        if (quickMoved) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            quickMoved = false;
+        }
+    }, true);
+}
 
 async function toggle() {
     if (rec) { rec.stop(); return; }
@@ -58,6 +127,8 @@ export function init() {
         quick.addEventListener('click', () => hub.openHub('learn'));
     }
     if (quick.parentElement !== document.body) document.body.append(quick);
+    restoreQuickPosition();
+    enableQuickDrag();
     setVisible(S.get().enabled);
     quickObserver ||= new MutationObserver(() => {
         if (!quick.isConnected) document.body.append(quick);

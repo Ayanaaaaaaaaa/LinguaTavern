@@ -27,6 +27,7 @@ export const DEFAULTS = {
     coachAuto: false,
     chatExercises: false,
     roleplaySafe: true,
+    quickPosition: null,
     dailyGoal: 10,
     vocab: {},
     known: {},
