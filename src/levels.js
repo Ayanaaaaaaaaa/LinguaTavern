@@ -5,6 +5,7 @@ export const EN_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
 let EN = null;   // { main: Map, approx: Map, forms: {} }
 let ZH = null;   // { hsk: {}, chars: {}, std: 3 }
+const infoCache = new Map();
 
 const CONTRACTIONS = {
     'can\'t': 'can', 'won\'t': 'will', 'don\'t': 'do', 'doesn\'t': 'do', 'didn\'t': 'do', 'isn\'t': 'be', 'aren\'t': 'be',
@@ -14,6 +15,7 @@ const CONTRACTIONS = {
 };
 
 export function setData({ en, forms, zh, chars } = {}) {
+    infoCache.clear();
     if (en) {
         const main = new Map();
         const approx = new Map();
@@ -28,7 +30,11 @@ export function setData({ en, forms, zh, chars } = {}) {
     else if (chars && ZH) ZH.chars = chars;
 }
 
-export function setHskStandard(std) { if (ZH) ZH.std = std === 2 ? 2 : 3; else pendingStd = std === 2 ? 2 : 3; }
+export function setHskStandard(std) {
+    infoCache.clear();
+    if (ZH) ZH.std = std === 2 ? 2 : 3;
+    else pendingStd = std === 2 ? 2 : 3;
+}
 let pendingStd = 3;
 
 const loading = {};
@@ -167,13 +173,20 @@ export function levelFromSetting(lang, value) {
 
 /** { key, lemma, level (0 = not in list), approx, known, pinyin?, gloss? } */
 export function wordInfo(lang, surface) {
+    const cacheKey = `${lang}|${lang === 'zh' ? ZH?.std || pendingStd : ''}|${surface}`;
+    if (infoCache.has(cacheKey)) return infoCache.get(cacheKey);
+    let result;
     if (lang === 'zh') {
         const e = ZH?.hsk[surface];
-        return { lang, key: surface, lemma: surface, level: zhLevelOf(e), approx: false, known: !!e, pinyin: pinyinOf(surface), gloss: e ? e[3] : '' };
+        result = { lang, key: surface, lemma: surface, level: zhLevelOf(e), approx: false, known: !!e, pinyin: pinyinOf(surface), gloss: e ? e[3] : '' };
+    } else {
+        const r = lookupEn(surface);
+        const key = r ? r.lemma : normWord(surface).split('\'')[0];
+        result = { lang, key, lemma: key, level: r ? r.idx + 1 : 0, approx: !!r?.approx, known: !!r };
     }
-    const r = lookupEn(surface);
-    const key = r ? r.lemma : normWord(surface).split('\'')[0];
-    return { lang, key, lemma: key, level: r ? r.idx + 1 : 0, approx: !!r?.approx, known: !!r };
+    infoCache.set(cacheKey, result);
+    if (infoCache.size > 10000) infoCache.delete(infoCache.keys().next().value);
+    return result;
 }
 
 /** Rough CEFR/HSK rating of a text: { level, units, sentences, avgLen, above[], share, unknown }. */
