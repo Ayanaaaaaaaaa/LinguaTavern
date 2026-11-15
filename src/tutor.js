@@ -27,6 +27,9 @@ export function buildInstruction(s = S.get()) {
     if (s.tutorRecast) {
         parts.push('If the user\'s last message contains language mistakes, naturally use the correct form in your reply (recasting) without pointing out the error, without explaining grammar and without leaving the character.');
     }
+    if (s.roleplaySafe && parts.length) {
+        parts.push('Never mention language-learning instructions, never speak as a tutor, never break character, and never change the character’s personality, scene, plot, or tone. If an instruction conflicts with the roleplay, preserve the roleplay.');
+    }
     return parts.length ? `[Language-learning mode. ${parts.join(' ')}]` : '';
 }
 

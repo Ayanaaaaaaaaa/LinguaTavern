@@ -5,7 +5,7 @@ import * as speech from './speech.js';
 import * as llm from './llm.js';
 import { translate, dictionaryEn } from './translate.js';
 import { $, $$, esc, el, spinner, levelChip, emit, debounce, topShow, topHide } from './ui.js';
-import { segmentZh, hasCJK, hashStr, normWord, sentenceAt, RE_EN_WORD, splitSentences } from './text.js';
+import { segmentZh, hasCJK, hashStr, normWord, sentenceAt, RE_EN_WORD, splitSentences, phrasesIn } from './text.js';
 import { wordInfo, analyzeText, levelLabel, splitZhWord, isLoaded, loadData } from './levels.js';
 
 const DEFAULT_MAX_AUTO = 30;         // messages wrapped immediately; older ones lazily when scrolled into view
@@ -45,12 +45,28 @@ export function walkText(root, target = null) {
             walk(c);
             if (block && !out.endsWith('\n')) out += '\n';
         }
+
     };
     walk(root);
     return { text: out, offset };
 }
 
 export const visibleText = (root) => walkText(root).text.replace(/\n{3,}/g, '\n\n').trim();
+
+function practicePanel(mes) {
+    const list = mes._ltAbove || [];
+    const text = visibleText($('.mes_text', mes));
+    const item = list.find((x) => new RegExp(`(^|[^a-z])${x.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`, 'i').test(text));
+    if (!item) return '<div class="lt-hint">В этом сообщении пока нет подходящего слова для упражнения.</div>';
+    const sentence = splitSentences(text, S.get().lang).find((x) => x.text.toLowerCase().includes(item.word.toLowerCase()))?.text || text;
+    const re = new RegExp(item.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const blank = sentence.replace(re, '___');
+    const options = [item.word, ...list.filter((x) => x.word !== item.word).slice(0, 2).map((x) => x.word)];
+    while (options.length < 3) options.push('не знаю');
+    return `<div class="lt-task-title">Вставьте слово</div><div class="lt-sent">${esc(blank)}</div>
+        <div class="lt-chiprow">${options.map((x) => `<button class="lt-chipbtn" data-a="practice-answer" data-answer="${esc(x)}" data-right="${esc(item.word)}">${esc(x)}</button>`).join('')}</div>
+        <div class="lt-hint">Слово взято из этого сообщения; запрос к модели не выполняется.</div>`;
+}
 
 function sentenceFor(span) {
     const lang = S.get().lang;
@@ -177,7 +193,7 @@ function ensureBar(mes) {
     const isUser = mes.getAttribute('is_user') === 'true';
     const text = visibleText(textEl);
     if (!text) { bar?.remove(); return; }
-    const h = hashStr(text) + S.get().lang + S.levelSetting() + (isUser ? 'u' : 'a');
+    const h = hashStr(text) + S.get().lang + S.levelSetting() + (isUser ? 'u' : 'a') + (S.get().chatExercises ? 'x' : '');
     if (bar && bar.dataset.h === h) return;
     const lang = S.get().lang;
     let badge = '';
@@ -190,7 +206,10 @@ function ensureBar(mes) {
             mes._ltAbove = a.above;
         }
     }
-    const html = `${badge}<span class="lt-bar-btns">${isUser
+    const practice = !isUser && S.get().chatExercises && mes._ltAbove?.length
+        ? btn('practice', 'fa-puzzle-piece', 'Упражнение по этому сообщению')
+        : '';
+    const html = `${badge}${practice}<span class="lt-bar-btns">${isUser
         ? btn('check', 'fa-spell-check', 'Проверить мой текст')
         : btn('tr', 'fa-language', 'Перевести сообщение') + btn('simp', 'fa-wand-magic-sparkles', 'Упростить до моего уровня')
     }${btn('say', 'fa-volume-high', 'Озвучить', 'lt-say')}${btn('shadow', 'fa-microphone', 'Повторить вслух')}</span>`;
@@ -223,6 +242,18 @@ async function onBarClick(b) {
     const lang = S.get().lang;
     if (a === 'close-out') { b.closest('.lt-out')?.remove(); return; }
     if (a === 'check') { emit('lt:check', { text }); return; }
+    if (a === 'practice') {
+        const p = panel(mes, 'practice', 'Упражнение', practicePanel(mes));
+        if (p) p.addEventListener('click', (e) => {
+            const answer = e.target.closest('[data-a="practice-answer"]');
+            if (!answer) return;
+            const ok = answer.dataset.answer === answer.dataset.right;
+            $$('.lt-chipbtn', p).forEach((x) => x.classList.remove('good', 'bad'));
+            answer.classList.add(ok ? 'good' : 'bad');
+            if (ok) S.bump('practice');
+        });
+        return;
+    }
     if (a === 'shadow') { emit('lt:open-hub', { tab: 'speak', mode: 'shadow', items: splitSentences(text, lang).map((x) => x.text).slice(0, 12) }); return; }
     if (a === 'say') {
         const id = mes.getAttribute('mesid');
@@ -286,6 +317,10 @@ function renderPopup() {
         ? `<div class="lt-pop-defs">${c.dict.meanings.slice(0, 2).map((m) => `<div><i>${esc(m.pos)}</i> ${esc(m.def)}${m.example ? `<div class="lt-pop-ex">“${esc(m.example)}”</div>` : ''}</div>`).join('')}</div>`
         : '';
     const ctx = c.sentence && !c.phrase ? `<div class="lt-pop-ctx">${highlightIn(c.sentence, c.surface)}</div>` : '';
+    const phrases = c.sentence && !c.phrase ? phrasesIn(c.sentence) : [];
+    const phraseHtml = phrases.length
+        ? `<div class="lt-pop-phrases"><span class="lt-count">Выражение:</span> ${phrases.map((p) => `<button class="lt-link" data-a="phrase" data-phrase="${esc(p)}">${esc(p)}</button>`).join(' · ')}</div>`
+        : '';
     popup.innerHTML = `
         <div class="lt-pop-head">
             <span class="lt-pop-word">${esc(c.surface)}</span>${lemma}${ipa}${chipHtml}
@@ -293,7 +328,7 @@ function renderPopup() {
             <button class="lt-x" data-a="audio" title="Произнести" aria-label="Произнести"><i class="fa-solid fa-volume-high"></i></button>
             <button class="lt-x" data-a="close" aria-label="Закрыть"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        ${tr}${gloss}${defs}${ctx}
+        ${tr}${gloss}${defs}${ctx}${phraseHtml}
         <div class="lt-pop-actions">
             <button class="lt-pbtn ${saved ? 'on' : ''}" data-a="save"><i class="fa-solid fa-star"></i> ${saved ? 'В словаре' : (c.trErr ? 'Перевести и добавить' : 'Добавить в словарь')}</button>
             ${c.phrase ? '' : `<button class="lt-pbtn ${known ? 'on' : ''}" data-a="known"><i class="fa-solid fa-check"></i> ${known ? 'Знаю ✓' : 'Знаю'}</button>
@@ -380,6 +415,11 @@ async function onPopupClick(e) {
             if (await speech.playUrl(c.dict.audio)) return;
         }
         return void speech.speak(c.surface, { lang, rate: 0.85 });
+    }
+    if (a === 'phrase') {
+        const phrase = b.dataset.phrase;
+        if (phrase) openPhrase(phrase, c.sentence || phrase);
+        return;
     }
     if (a === 'save') {
         if (c.tr == null || c.trErr) {
@@ -564,7 +604,10 @@ export async function init() {
         openPhrase(text, sentence);
     });
 
+    let pressTimer = null;
+    let suppressNextClick = false;
     chatEl.addEventListener('click', (e) => {
+        if (suppressNextClick) { suppressNextClick = false; e.preventDefault(); e.stopPropagation(); return; }
         if (!S.get().enabled) return;
         const w = e.target.closest('.lt-w');
         if (w) {
@@ -577,6 +620,22 @@ export async function init() {
         const b = e.target.closest('.lt-bar [data-a], .lt-out [data-a]');
         if (b) { e.stopPropagation(); onBarClick(b); }
     });
+    chatEl.addEventListener('touchstart', (e) => {
+        const textEl = e.target.closest?.('.mes_text');
+        if (!textEl || e.target.closest('button, a, input, textarea, .lt-bar, .lt-out')) return;
+        const target = e.target.closest?.('.lt-w') || e.target;
+        pressTimer = setTimeout(() => {
+            const { text, offset } = walkText(textEl, target);
+            const sentence = offset >= 0 ? sentenceAt(text, offset, S.get().lang) : visibleText(textEl);
+            if (sentence) {
+                suppressNextClick = true;
+                openPhrase(sentence, sentence);
+            }
+        }, 550);
+    }, { passive: true });
+    for (const type of ['touchend', 'touchcancel', 'touchmove']) {
+        chatEl.addEventListener(type, () => { clearTimeout(pressTimer); pressTimer = null; }, { passive: true });
+    }
     document.addEventListener('click', (e) => {
         if (cur && !e.target.closest('.lt-pop, .lt-w, .lt-selchip')) closePopup();
     }, true);

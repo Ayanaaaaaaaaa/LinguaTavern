@@ -52,6 +52,8 @@ function settingsHtml() {
             ${chk('tutorFollowUp', 'Заканчивать ответ вопросом ко мне', 'Так вы больше пишете и говорите сами')}
             ${chk('tutorRecast', 'Мягко повторять мои фразы правильно', 'Персонаж не поправляет прямо, а использует верную форму в ответе')}
             ${chk('coachAuto', 'Мини-проверка моих сообщений под ними (тратит запросы к модели)', 'Работает после ответа персонажа')}
+            ${chk('chatExercises', 'Упражнения из сообщений персонажа', 'Создаёт локальные задания из уже выделенных слов; запросы к модели не нужны')}
+            ${chk('roleplaySafe', 'Не вмешиваться в образ персонажа', 'Не добавлять мета-комментарии и не менять сцену; рекомендуется оставить включённым')}
             <h4 class="lt-set-h">Речь</h4>
             <div class="lt-set-grid">
                 <label class="lt-set"><span>Скорость озвучки: <b data-r="rate-val"></b></span><input type="range" min="0.5" max="1.2" step="0.05" data-k="ttsRate" data-t="num"></label>
@@ -83,7 +85,7 @@ function syncLevelRows(root) {
 }
 
 const RELOAD_KEYS = new Set(['enabled', 'lang', 'levelEn', 'levelZh', 'hskStd', 'highlight', 'msgBar', 'pinyin', 'scanLimit']);
-const TUTOR_KEYS = new Set(['enabled', 'lang', 'levelEn', 'levelZh', 'tutorLevel', 'tutorFollowUp', 'tutorRecast']);
+const TUTOR_KEYS = new Set(['enabled', 'lang', 'levelEn', 'levelZh', 'tutorLevel', 'tutorFollowUp', 'tutorRecast', 'roleplaySafe']);
 
 async function onSetting(e, root) {
     const t = e.target.closest('[data-k]');

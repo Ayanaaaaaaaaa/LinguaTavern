@@ -3,6 +3,17 @@
 export const hasCJK = (s) => /[㐀-䶿一-鿿豈-﫿]/.test(s);
 export const isCJKChar = (ch) => /[㐀-䶿一-鿿豈-﫿]/.test(ch);
 export const RE_EN_WORD = /[A-Za-z]+(?:['’][A-Za-z]+)*/g;
+export const COMMON_PHRASES = [
+    'as soon as', 'at least', 'by the way', 'come on', 'find out', 'get along',
+    'give up', 'go on', 'in front of', 'look after', 'look for', 'look forward to',
+    'make sure', 'of course', 'pick up', 'right away', 'take care', 'take part',
+    ' thanks to', 'turn out', 'used to', 'work out',
+].map((x) => x.trim());
+
+export function phrasesIn(text) {
+    const low = String(text ?? '').toLowerCase();
+    return COMMON_PHRASES.filter((p) => new RegExp(`(^|[^a-z])${p.replace(/ /g, '\\s+')}([^a-z]|$)`, 'i').test(low));
+}
 
 export function escapeHtml(s) {
     return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[c]));
