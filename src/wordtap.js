@@ -624,17 +624,23 @@ export async function init() {
         const textEl = e.target.closest?.('.mes_text');
         if (!textEl || e.target.closest('button, a, input, textarea, .lt-bar, .lt-out')) return;
         const target = e.target.closest?.('.lt-w') || e.target;
+        textEl.classList.add('lt-pressing');
         pressTimer = setTimeout(() => {
             const { text, offset } = walkText(textEl, target);
             const sentence = offset >= 0 ? sentenceAt(text, offset, S.get().lang) : visibleText(textEl);
             if (sentence) {
                 suppressNextClick = true;
+                window.getSelection()?.removeAllRanges();
                 openPhrase(sentence, sentence);
             }
         }, 550);
     }, { passive: true });
     for (const type of ['touchend', 'touchcancel', 'touchmove']) {
-        chatEl.addEventListener(type, () => { clearTimeout(pressTimer); pressTimer = null; }, { passive: true });
+        chatEl.addEventListener(type, (e) => {
+            e.target.closest?.('.mes_text')?.classList.remove('lt-pressing');
+            clearTimeout(pressTimer);
+            pressTimer = null;
+        }, { passive: true });
     }
     document.addEventListener('click', (e) => {
         if (cur && !e.target.closest('.lt-pop, .lt-w, .lt-selchip')) closePopup();
