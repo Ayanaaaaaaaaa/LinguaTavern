@@ -7,6 +7,7 @@ import { diffHtml } from './diff.js';
 import { hashStr, countUnits } from './text.js';
 import { visibleText } from './wordtap.js';
 import { $, $$, el, esc, emit } from './ui.js';
+import * as hub from './hub.js';
 
 const KEY = 'lingua_tavern';
 const LANG_NAME = { en: 'English', zh: 'Simplified Chinese' };
@@ -80,7 +81,7 @@ async function coach(mes) {
             : `<div class="lt-coach-line">✏️ <span lang="${s.lang}">${diffHtml(text, r.corrected)}</span></div>
                <div class="lt-why">${esc(r.errors.slice(0, 2).map((e) => `${e.wrong} → ${e.right}${e.why ? ' — ' + e.why : ''}`).join(' · '))}</div>
                <button class="lt-link" data-a="coach-more">Подробнее</button>`;
-        box.querySelector('[data-a="coach-more"]')?.addEventListener('click', () => emit('lt:check', { text }));
+        box.querySelector('[data-a="coach-more"]')?.addEventListener('click', () => hub.openHub('write', { mode: 'check', text }));
     } catch {
         box.remove();                 // silent: the coach is a bonus, never an error popup
         done.delete(id);

@@ -3,6 +3,7 @@ import * as st from './st.js';
 import * as S from './state.js';
 import * as speech from './speech.js';
 import * as llm from './llm.js';
+import * as hub from './hub.js';
 import { translate, dictionaryEn } from './translate.js';
 import { $, $$, esc, el, spinner, levelChip, emit, debounce, topShow, topHide } from './ui.js';
 import { segmentZh, hasCJK, hashStr, normWord, sentenceAt, RE_EN_WORD, splitSentences, phrasesIn } from './text.js';
@@ -91,6 +92,7 @@ function classesFor(info, surface) {
     const ul = S.userLevel();
     const cls = ['lt-w'];
     const known = S.isKnown(lang, info.key);
+    if (S.isIgnored(lang, info.key)) return cls;
     if (S.getWord(lang, info.key) && !known) cls.push('lt-saved');
     if (known || s.highlight === 'off' || s.highlight === 'saved') return cls;
     if (info.level) {
@@ -241,7 +243,7 @@ async function onBarClick(b) {
     const text = visibleText(textEl);
     const lang = S.get().lang;
     if (a === 'close-out') { b.closest('.lt-out')?.remove(); return; }
-    if (a === 'check') { emit('lt:check', { text }); return; }
+    if (a === 'check') { hub.openHub('write', { mode: 'check', text }); return; }
     if (a === 'practice') {
         const p = panel(mes, 'practice', 'Упражнение', practicePanel(mes));
         if (p) p.addEventListener('click', (e) => {
@@ -254,7 +256,7 @@ async function onBarClick(b) {
         });
         return;
     }
-    if (a === 'shadow') { emit('lt:open-hub', { tab: 'speak', mode: 'shadow', items: splitSentences(text, lang).map((x) => x.text).slice(0, 12) }); return; }
+    if (a === 'shadow') { hub.openHub('speak', { mode: 'shadow', items: splitSentences(text, lang).map((x) => x.text).slice(0, 12) }); return; }
     if (a === 'say') {
         const id = mes.getAttribute('mesid');
         if (speakingMes === id) { speech.stop(); speakingMes = null; b.classList.remove('on'); return; }
@@ -309,7 +311,7 @@ function renderPopup() {
     const ipa = ipaText ? `<span class="lt-pop-ipa">${esc(ipaText)}</span>` : '';
     const chipHtml = c.phrase ? '' : levelChip(lang, info.level, info.approx);
     let tr;
-    if (c.trErr) tr = `<div class="lt-pop-err">${esc(c.trErr)} <button class="lt-link" data-a="retry">Повторить</button></div>`;
+    if (c.trErr) tr = `<div class="lt-pop-err">${esc(c.trErr)} <button class="lt-link" data-a="retry">Повторить</button> <button class="lt-link" data-a="ai">Объяснить через модель</button></div>`;
     else if (c.tr == null) tr = spinner('Перевожу…');
     else tr = `<div class="lt-pop-tr">${esc(c.tr)}</div>`;
     const gloss = lang === 'zh' && info.gloss ? `<div class="lt-pop-def">${esc(info.gloss)}</div>` : '';
@@ -331,7 +333,8 @@ function renderPopup() {
         ${tr}${gloss}${defs}${ctx}${phraseHtml}
         <div class="lt-pop-actions">
             <button class="lt-pbtn ${saved ? 'on' : ''}" data-a="save"><i class="fa-solid fa-star"></i> ${saved ? 'В словаре' : (c.trErr ? 'Перевести и добавить' : 'Добавить в словарь')}</button>
-            ${c.phrase ? '' : `<button class="lt-pbtn ${known ? 'on' : ''}" data-a="known"><i class="fa-solid fa-check"></i> ${known ? 'Знаю ✓' : 'Знаю'}</button>
+            ${c.phrase ? '' : `            <button class="lt-pbtn ${known ? 'on' : ''}" data-a="known"><i class="fa-solid fa-check"></i> ${known ? 'Знаю ✓' : 'Знаю'}</button>
+            <button class="lt-pbtn ${S.isIgnored(lang, info.key) ? 'on' : ''}" data-a="ignore"><i class="fa-solid fa-eye-slash"></i> ${S.isIgnored(lang, info.key) ? 'Не подсвечивать ✓' : 'Не подсвечивать'}</button>
             <button class="lt-pbtn" data-a="ctx"><i class="fa-solid fa-lightbulb"></i> В контексте</button>
             <button class="lt-pbtn" data-a="sent"><i class="fa-solid fa-language"></i> Предложение</button>`}
             <button class="lt-pbtn" data-a="say"><i class="fa-solid fa-microphone"></i> Сказать</button>
@@ -410,6 +413,21 @@ async function onPopupClick(e) {
     const a = b.dataset.a;
     if (a === 'close') return closePopup();
     if (a === 'retry') return lookup(c, ++reqId);
+    if (a === 'ai') {
+        const mine = reqId;
+        c.extra = spinner('Объясняю через модель…');
+        renderPopup();
+        try {
+            const x = await llm.explainWord(c.surface, c.sentence || c.surface);
+            c.extra = `<div class="lt-pop-ai"><b>Объяснение:</b> ${esc(x.translation || '')} <i>${esc(x.pos || '')}</i>
+                ${x.meaning ? `<div>${esc(x.meaning)}</div>` : ''}${x.example ? `<div class="lt-pop-ex">“${esc(x.example)}” — ${esc(x.example_tr || '')}</div>` : ''}
+                ${x.note ? `<div class="lt-note">${esc(x.note)}</div>` : ''}</div>`;
+        } catch (err) {
+            c.extra = `<div class="lt-pop-err">${esc(err.message || String(err))}</div>`;
+        }
+        if (cur === c && mine === reqId) renderPopup();
+        return;
+    }
     if (a === 'audio') {
         if (lang === 'en' && c.dict?.audio && !c.phrase) {
             if (await speech.playUrl(c.dict.audio)) return;
@@ -451,8 +469,13 @@ async function onPopupClick(e) {
         restyleKey(c.info.key);
         return renderPopup();
     }
+    if (a === 'ignore') {
+        S.setIgnored(lang, c.info.key, !S.isIgnored(lang, c.info.key));
+        restyleKey(c.info.key);
+        return renderPopup();
+    }
     if (a === 'say') {
-        emit('lt:open-hub', { tab: 'speak', mode: 'shadow', items: [c.sentence || c.surface] });
+        hub.openHub('speak', { mode: 'shadow', items: [c.sentence || c.surface] });
         return closePopup();
     }
     if (a === 'sent' || a === 'ctx') {

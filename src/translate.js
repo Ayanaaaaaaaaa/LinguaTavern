@@ -26,8 +26,7 @@ async function one(text, to, provider) {
         if (provider !== 'google') {
             try { return await viaServer('google', text, to); } catch { /* fall through */ }
         }
-        // last resort: the language model the user is connected to
-        try { return await translateLLM(text, to); } catch { throw e; }
+        throw e;
     }
 }
 

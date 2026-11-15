@@ -2,6 +2,7 @@
 import * as st from './st.js';
 import * as S from './state.js';
 import * as speech from './speech.js';
+import * as hub from './hub.js';
 import { el } from './ui.js';
 
 let btn = null;
@@ -47,7 +48,7 @@ export function init() {
     }
     if (!quick) {
         quick = document.getElementById('lt_quick_open') || el('<button id="lt_quick_open" class="lt-quickbtn lt-quick-fab fa-solid fa-graduation-cap interactable" title="Открыть Lingua Tavern" aria-label="Открыть Lingua Tavern" type="button"></button>');
-        quick.addEventListener('click', () => document.dispatchEvent(new CustomEvent('lt:open-hub', { detail: { tab: 'learn' } })));
+        quick.addEventListener('click', () => hub.openHub('learn'));
     }
     if (quick.parentElement !== document.body) document.body.append(quick);
     setVisible(S.get().enabled);

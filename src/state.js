@@ -30,6 +30,7 @@ export const DEFAULTS = {
     dailyGoal: 10,
     vocab: {},
     known: {},
+    ignored: {},
     phrases: [],
     stats: { days: {}, mistakes: {}, speaking: [] },
     version: 1,
@@ -83,6 +84,7 @@ export const nativeName = () => ({ ru: 'Russian', en: 'English', uk: 'Ukrainian'
 export const vkey = (lang, w) => `${lang}:${w}`;
 export const getWord = (lang, w) => S.vocab[vkey(lang, w)];
 export const isKnown = (lang, w) => !!S.known[vkey(lang, w)] || S.vocab[vkey(lang, w)]?.status === 'known';
+export const isIgnored = (lang, w) => !!S.ignored[vkey(lang, w)];
 
 export function saveWord(entry) {
     const k = vkey(entry.lang, entry.w);
@@ -103,6 +105,12 @@ export function setKnown(lang, w, known) {
     const k = vkey(lang, w);
     if (known) S.known[k] = 1; else delete S.known[k];
     if (S.vocab[k]) S.vocab[k].status = known ? 'known' : (S.vocab[k].ivl >= 21 ? 'mature' : 'learning');
+    save();
+}
+
+export function setIgnored(lang, w, ignored = true) {
+    const k = vkey(lang, w);
+    if (ignored) S.ignored[k] = 1; else delete S.ignored[k];
     save();
 }
 

@@ -146,6 +146,7 @@ ok($('.lt-pop'), 'popup element created');
 ok($('#lt_open'), 'settings drawer mounted');
 ok($('#lt_menu_open'), 'wand-menu item mounted');
 ok($('#lt_mic'), 'mic button mounted');
+ok($('#lt_quick_open') && getComputedStyle($('#lt_quick_open')).display !== 'none', 'quick access button mounted and visible');
 const S0 = extension_settings.lingua_tavern;
 ok(S0 && S0.lang === 'en' && S0.levelEn === 'B1', 'default settings written (en, B1)');
 ok(stub.prompts.lingua_tavern?.value.includes('B1'), 'tutor instruction injected into the prompt', JSON.stringify(stub.prompts.lingua_tavern));
@@ -177,11 +178,12 @@ ok($('.lt-pop-word')?.textContent === 'postpone', 'popup shows the word');
 ok($('.lt-pop-ctx')?.textContent.includes('postpone the meeting'), 'popup shows sentence context');
 await until(() => $('.lt-pop-defs'));
 ok($('.lt-pop-defs'), 'english definition from the dictionary shown');
-
 click($('.lt-pop [data-a="save"]'));
 const key = 'en:postpone';
 ok(extension_settings.lingua_tavern.vocab[key]?.tr === 'RU[postpone]', 'word saved to the dictionary with translation', JSON.stringify(extension_settings.lingua_tavern.vocab[key]));
 ok(target.classList.contains('lt-saved'), 'saved word gets highlighted');
+click($('.lt-pop [data-a="ignore"]'));
+ok(!target.classList.contains('lt-above') && extension_settings.lingua_tavern.ignored['en:postpone'], 'ignored word is no longer highlighted');
 click($('.lt-pop [data-a="known"]'));
 ok(extension_settings.lingua_tavern.known[key] === 1, '"I know it" recorded');
 ok(!target.classList.contains('lt-above'), 'known word is no longer marked');
@@ -365,6 +367,10 @@ ok(!$('.lt-hub'), 'hub closes');
 
 // ================================================================ 6. chat → hub shortcuts
 console.log('\n[6] shortcuts from the chat');
+click($('#lt_quick_open'));
+await until(() => $('.lt-hub'));
+ok($('.lt-hub'), 'quick access opens Lingua Tavern');
+click($('.lt-hub [data-a="close"]'));
 click($('.lt-bar [data-a="check"]', mu));
 await until(() => $('.lt-hub'));
 ok($('[data-r="ta"]')?.value === 'I goed to school yesterday.', 'user message "check" opens Write with the text', $('[data-r="ta"]')?.value);
