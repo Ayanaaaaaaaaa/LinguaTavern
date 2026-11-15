@@ -35,7 +35,8 @@ async function toggle() {
 
 export function setVisible(on) {
     if (btn) btn.style.display = on ? '' : 'none';
-    if (quick) quick.style.display = on ? '' : 'none';
+    // The hub shortcut must remain available even when word highlighting is disabled.
+    if (quick) quick.style.display = '';
 }
 
 export function init() {
@@ -47,7 +48,8 @@ export function init() {
         host.append(btn);
     }
     if (!quick) {
-        quick = document.getElementById('lt_quick_open') || el('<button id="lt_quick_open" class="lt-quickbtn lt-quick-fab fa-solid fa-graduation-cap interactable" title="Открыть Lingua Tavern" aria-label="Открыть Lingua Tavern" type="button"></button>');
+        quick = document.getElementById('lt_quick_open') || el('<button id="lt_quick_open" class="lt-quickbtn lt-quick-fab interactable" title="Открыть Lingua Tavern" aria-label="Открыть Lingua Tavern" type="button">🎓 <span>Lingua</span></button>');
+        if (!quick.textContent.trim()) quick.innerHTML = '🎓 <span>Lingua</span>';
         quick.addEventListener('click', () => hub.openHub('learn'));
     }
     if (quick.parentElement !== document.body) document.body.append(quick);
