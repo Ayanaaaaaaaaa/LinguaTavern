@@ -14,6 +14,7 @@ export const DEFAULTS = {
     highlight: 'above',    // off | above | levels | saved
     pinyin: 'unknown',     // off | unknown | all
     msgBar: 'all',         // off | last | all
+    scanLimit: 30,         // recent messages wrapped immediately; older ones load on scroll
     popupDefs: true,       // English definitions + IPA from the free dictionary
     autoSpeak: false,
     ttsRate: 0.9,
