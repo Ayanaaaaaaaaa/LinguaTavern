@@ -5,6 +5,7 @@ import { translateLLM } from './llm.js';
 import { splitSentences } from './text.js';
 
 const cache = new Map();
+const pending = new Map();
 const MAX_CACHE = 500;
 
 async function viaServer(provider, text, to) {
@@ -36,21 +37,26 @@ export async function translate(text, { to = S.get().native, provider = S.get().
     if (!text) return '';
     const key = `${provider}|${to}|${text}`;
     if (cache.has(key)) return cache.get(key);
-    let out;
-    if (text.length <= 3500) {
-        out = await one(text, to, provider);
-    } else {
-        const parts = [];
-        let cur = '';
-        for (const s of splitSentences(text, S.get().lang)) {
-            if ((cur + ' ' + s.text).length > 3000 && cur) { parts.push(cur); cur = s.text; } else cur = cur ? cur + ' ' + s.text : s.text;
+    if (pending.has(key)) return pending.get(key);
+    const job = (async () => {
+        let out;
+        if (text.length <= 3500) {
+            out = await one(text, to, provider);
+        } else {
+            const parts = [];
+            let cur = '';
+            for (const s of splitSentences(text, S.get().lang)) {
+                if ((cur + ' ' + s.text).length > 3000 && cur) { parts.push(cur); cur = s.text; } else cur = cur ? cur + ' ' + s.text : s.text;
+            }
+            if (cur) parts.push(cur);
+            out = (await Promise.all(parts.map((p) => one(p, to, provider)))).join(' ');
         }
-        if (cur) parts.push(cur);
-        out = (await Promise.all(parts.map((p) => one(p, to, provider)))).join(' ');
-    }
-    cache.set(key, out);
-    if (cache.size > MAX_CACHE) cache.delete(cache.keys().next().value);
-    return out;
+        cache.set(key, out);
+        if (cache.size > MAX_CACHE) cache.delete(cache.keys().next().value);
+        return out;
+    })();
+    pending.set(key, job);
+    try { return await job; } finally { pending.delete(key); }
 }
 
 const dictCache = new Map();
