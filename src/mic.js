@@ -8,6 +8,7 @@ import { el } from './ui.js';
 let btn = null;
 let quick = null;
 let rec = null;
+let quickObserver = null;
 
 async function toggle() {
     if (rec) { rec.stop(); return; }
@@ -36,7 +37,11 @@ async function toggle() {
 export function setVisible(on) {
     if (btn) btn.style.display = on ? '' : 'none';
     // The hub shortcut must remain available even when word highlighting is disabled.
-    if (quick) quick.style.display = '';
+    if (quick) {
+        quick.hidden = false;
+        quick.removeAttribute('hidden');
+        quick.style.setProperty('display', 'flex', 'important');
+    }
 }
 
 export function init() {
@@ -54,4 +59,9 @@ export function init() {
     }
     if (quick.parentElement !== document.body) document.body.append(quick);
     setVisible(S.get().enabled);
+    quickObserver ||= new MutationObserver(() => {
+        if (!quick.isConnected) document.body.append(quick);
+        setVisible(S.get().enabled);
+    });
+    quickObserver.observe(document.body, { childList: true });
 }
