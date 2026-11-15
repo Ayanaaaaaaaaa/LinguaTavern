@@ -40,6 +40,11 @@ function settingsHtml() {
                 ${sel('msgBar', 'Панель под сообщением', opts(s.msgBar, [['all', 'У всех сообщений'], ['last', 'Только у последнего'], ['off', 'Скрыть']]))}
                 ${sel('pinyin', 'Пиньинь над иероглифами', opts(s.pinyin, [['unknown', 'Над незнакомыми'], ['all', 'Над всеми'], ['off', 'Не показывать']]))}
             </div>
+            <h4 class="lt-set-h">Производительность</h4>
+            <div class="lt-set-grid">
+                ${sel('scanLimit', 'Сколько новых сообщений обрабатывать сразу', opts(s.scanLimit, [[15, '15 — быстрее'], [30, '30 — обычно'], [60, '60 — больше подсветки']]), 'int')}
+            </div>
+            <div class="lt-hint">Старые сообщения обрабатываются при прокрутке. Переводы и определения кэшируются, поэтому повторные нажатия не создают новые запросы.</div>
             ${chk('popupDefs', 'Показывать английское определение и транскрипцию (бесплатный словарь, нужен интернет)')}
             ${chk('autoSpeak', 'Автоматически озвучивать новые ответы персонажа')}
             <h4 class="lt-set-h">Репетитор в ролевой игре</h4>
@@ -77,7 +82,7 @@ function syncLevelRows(root) {
     $$('[data-k="pinyin"]', root).forEach((x) => { x.closest('.lt-set').style.display = zh ? '' : 'none'; });
 }
 
-const RELOAD_KEYS = new Set(['enabled', 'lang', 'levelEn', 'levelZh', 'hskStd', 'highlight', 'msgBar', 'pinyin']);
+const RELOAD_KEYS = new Set(['enabled', 'lang', 'levelEn', 'levelZh', 'hskStd', 'highlight', 'msgBar', 'pinyin', 'scanLimit']);
 const TUTOR_KEYS = new Set(['enabled', 'lang', 'levelEn', 'levelZh', 'tutorLevel', 'tutorFollowUp', 'tutorRecast']);
 
 async function onSetting(e, root) {
