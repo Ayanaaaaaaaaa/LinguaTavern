@@ -225,6 +225,8 @@
 .lt-micbtn { cursor: pointer; opacity: .75; align-self: center; }
 .lt-micbtn:hover { opacity: 1; }
 .lt-micbtn.on { color: var(--lt-bad); opacity: 1; animation: lt-pulse 1.2s infinite; }
+.lt-quickbtn { cursor: pointer; opacity: .75; align-self: center; color: var(--lt-acc); padding: 4px; }
+.lt-quickbtn:hover { opacity: 1; }
 
 @media (max-width: 600px) {
     .lt-sheet-wrap { padding: 0; }
